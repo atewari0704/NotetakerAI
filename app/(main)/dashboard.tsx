@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore, useTaskStore, useUIStore } from '@/stores';
 import { Card } from '@/components/ui';
@@ -8,6 +8,8 @@ import { ChatModal } from '@/components/features/chat';
 export default function DashboardScreen() {
   const [newTask, setNewTask] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{id: string, title: string} | null>(null);
   
   const { user, logout } = useAuthStore();
   const { 
@@ -84,49 +86,33 @@ export default function DashboardScreen() {
   };
 
   const handleDeleteTask = async (taskId: string, taskTitle: string) => {
-    Alert.alert(
-      'Remove Task',
-      `Are you sure you want to remove "${taskTitle}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('=== DELETE TASK DEBUG START ===');
-              console.log('Task ID:', taskId);
-              console.log('Task Title:', taskTitle);
-              console.log('Current tasks before delete:', tasks);
-              
-              await deleteTask(taskId);
-              console.log('Delete task call completed');
-              
-              // Refresh tasks to show updated list
-              await fetchTasks();
-              console.log('Fetch tasks call completed');
-              console.log('Current tasks after refresh:', tasks);
-              console.log('=== DELETE TASK DEBUG END ===');
-            } catch (error) {
-              console.error('=== DELETE ERROR ===');
-              console.error('Error details:', error);
-              console.error('Error message:', error.message);
-              console.error('Error stack:', error.stack);
-              console.error('=== END DELETE ERROR ===');
-              Alert.alert('Error', `Failed to remove task: ${error.message}`);
-            }
-          },
-        },
-      ]
-    );
+    setTaskToDelete({ id: taskId, title: taskTitle });
+    setShowDeleteModal(true);
+  };
+  
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    
+    try {
+      await deleteTask(taskToDelete.id);
+      await fetchTasks();
+    } catch (error: any) {
+      alert(`Failed to remove task: ${error.message}`);
+    } finally {
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
+    }
+  };
+  
+  const cancelDeleteTask = () => {
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
   };
 
   const pendingTasks = getPendingTasks();
   const inProgressTasks = getInProgressTasks();
   const completedTasks = getCompletedTasks();
+
 
   return (
     <View style={styles.container}>
@@ -147,6 +133,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
 
         {/* Quick Add Task */}
         <Card style={styles.quickAddCard}>
@@ -317,6 +304,37 @@ export default function DashboardScreen() {
         visible={modals.chat}
         onClose={() => closeModal('chat')}
       />
+      
+      {/* Custom Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDeleteTask}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Remove Task</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to remove "{taskToDelete?.title}"? This action cannot be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton}
+                onPress={cancelDeleteTask}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalConfirmButton}
+                onPress={confirmDeleteTask}
+              >
+                <Text style={styles.modalConfirmButtonText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -547,5 +565,56 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#94a3b8',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 24,
+    margin: 20,
+    minWidth: 300,
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
+  },
+  modalCancelButtonText: {
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  modalConfirmButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: '#ef4444',
+  },
+  modalConfirmButtonText: {
+    color: '#ffffff',
+    fontWeight: '500',
   },
 });
