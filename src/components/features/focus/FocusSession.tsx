@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { FocusTimer } from './FocusTimer';
 import { useFocusStore, useTaskStore } from '@/stores';
@@ -16,6 +16,7 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
 }) => {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
   
   const { 
     startSession, 
@@ -92,18 +93,56 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
   };
 
   const handleEndSession = () => {
-    Alert.alert(
-      'End Session',
-      'Are you sure you want to end this focus session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'End Session', 
-          style: 'destructive',
-          onPress: () => router.back()
-        }
-      ]
-    );
+    setShowEndModal(true);
+  };
+  
+  const confirmEndSession = async () => {
+    try {
+      // End the session properly
+      await endSession({
+        status: 'cancelled',
+        end_time: new Date(),
+        duration_minutes: Math.floor(targetDuration),
+      });
+      
+      // Navigate back to dashboard
+      router.back();
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      // Still navigate back even if there's an error
+      router.back();
+    } finally {
+      setShowEndModal(false);
+    }
+  };
+  
+  const completeTaskAndEndSession = async () => {
+    try {
+      // Mark task as completed
+      if (currentTask) {
+        await updateTask(currentTask.id, { status: 'completed' });
+      }
+      
+      // End the session properly
+      await endSession({
+        status: 'completed',
+        end_time: new Date(),
+        duration_minutes: Math.floor(targetDuration),
+      });
+      
+      // Navigate back to dashboard
+      router.back();
+    } catch (error) {
+      console.error('Failed to complete task and end session:', error);
+      // Still navigate back even if there's an error
+      router.back();
+    } finally {
+      setShowEndModal(false);
+    }
+  };
+  
+  const cancelEndSession = () => {
+    setShowEndModal(false);
   };
 
   if (!sessionStarted) {
@@ -170,6 +209,46 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
       <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
         <Text style={styles.endButtonText}>End Session</Text>
       </TouchableOpacity>
+      
+      {/* Custom End Session Confirmation Modal */}
+      <Modal
+        visible={showEndModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelEndSession}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>End Focus Session</Text>
+            <Text style={styles.modalMessage}>
+              Choose how to end your focus session:
+            </Text>
+            <View style={styles.taskInfo}>
+              <Text style={styles.taskInfoText}>📋 Task: "{currentTask?.title}"</Text>
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton}
+                onPress={cancelEndSession}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalEndButton}
+                onPress={confirmEndSession}
+              >
+                <Text style={styles.modalEndButtonText}>End Session Only</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalCompleteButton}
+                onPress={completeTaskAndEndSession}
+              >
+                <Text style={styles.modalCompleteButtonText}>✓ Complete & End</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -305,5 +384,87 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 24,
+    margin: 20,
+    minWidth: 300,
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#94a3b8',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  taskInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 24,
+  },
+  taskInfoText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  modalCancelButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    flex: 1,
+  },
+  modalCancelButtonText: {
+    color: '#94a3b8',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  modalEndButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: '#ef4444',
+    flex: 1,
+  },
+  modalEndButtonText: {
+    color: '#ffffff',
+    fontWeight: '500',
+    textAlign: 'center',
+    fontSize: 13,
+  },
+  modalCompleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: '#10b981',
+    flex: 1,
+  },
+  modalCompleteButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 13,
   },
 });

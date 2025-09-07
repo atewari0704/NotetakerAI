@@ -59,8 +59,8 @@ export default function DashboardScreen() {
       return;
     }
     
-    // Navigate to focus session
-    router.push('/(main)/focus/session');
+    // Navigate to task selection screen
+    router.push('/(main)/focus/select-task');
   };
 
   const handleChatWithAI = () => {

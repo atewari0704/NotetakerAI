@@ -18,6 +18,13 @@ export default function MainLayout() {
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="analytics" options={{ headerShown: false }} />
       <Stack.Screen 
+        name="focus/select-task" 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }} 
+      />
+      <Stack.Screen 
         name="focus/session" 
         options={{ 
           headerShown: false,
