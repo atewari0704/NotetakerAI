@@ -32,8 +32,8 @@ export default function SelectTaskScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Select Task to Focus On</Text>
-          <Text style={styles.subtitle}>Choose which task you'd like to focus on</Text>
+          <Text style={styles.title}>Choose Your Focus Task</Text>
+          <Text style={styles.subtitle}>Select a task to start your focus session</Text>
         </View>
 
         {/* Task List */}
@@ -89,7 +89,7 @@ export default function SelectTaskScreen() {
             disabled={!selectedTaskId}
           >
             <Text style={styles.startButtonText}>
-              {selectedTaskId ? 'Start Focus Session' : 'Select a Task'}
+              {selectedTaskId ? 'Start Focus Session' : 'Select a Task First'}
             </Text>
           </TouchableOpacity>
 
@@ -237,3 +237,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
