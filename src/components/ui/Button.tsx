@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Button as PaperButton, ButtonProps } from 'react-native-paper';
 import { THEME_CONFIG } from '@/config/app';
+import { colors } from '@/config';
+import { useButtonHover } from '@/hooks';
 
 interface CustomButtonProps extends Omit<ButtonProps, 'mode'> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -20,6 +22,7 @@ export const Button: React.FC<CustomButtonProps> = ({
   disabled,
   loading,
   children,
+  onPress,
   ...props
 }) => {
   const getButtonStyle = (): ViewStyle => {
@@ -70,33 +73,65 @@ export const Button: React.FC<CustomButtonProps> = ({
 
   const getButtonColor = (): string => {
     if (disabled) {
-      return THEME_CONFIG.colors.textDisabled;
+      return colors.neutral.silver;
     }
 
     switch (variant) {
       case 'secondary':
-        return THEME_CONFIG.colors.secondary;
+        return colors.button.secondary;
       case 'outline':
       case 'ghost':
-        return THEME_CONFIG.colors.primary;
+        return colors.button.primary;
       default:
-        return THEME_CONFIG.colors.primary;
+        return colors.button.primary;
+    }
+  };
+
+  const getHoverColor = (): string => {
+    if (disabled) {
+      return colors.neutral.silver;
+    }
+
+    switch (variant) {
+      case 'secondary':
+        return colors.button.secondaryHover;
+      case 'outline':
+      case 'ghost':
+        return colors.button.primaryHover;
+      default:
+        return colors.button.primaryHover;
+    }
+  };
+
+  const { backgroundColor, onMouseEnter, onMouseLeave, onPressIn, onPressOut } = useButtonHover(
+    getButtonColor(),
+    getHoverColor()
+  );
+
+  const handlePress = (event: any) => {
+    if (onPress) {
+      onPress(event);
     }
   };
 
   return (
     <PaperButton
       mode={getMode()}
-      buttonColor={getButtonColor()}
+      buttonColor={backgroundColor}
       textColor={
         variant === 'outline' || variant === 'ghost'
-          ? THEME_CONFIG.colors.primary
-          : '#ffffff'
+          ? colors.button.primary
+          : colors.text.inverse
       }
       disabled={disabled}
       loading={loading}
       style={getButtonStyle()}
       labelStyle={getLabelStyle()}
+      onPress={handlePress}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       {...props}
     >
       {children}

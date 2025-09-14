@@ -15,6 +15,12 @@ export default function SelectTaskScreen() {
   const pendingTasks = getPendingTasks();
 
   const handleStartFocus = () => {
+    if (pendingTasks.length === 0) {
+      // No tasks available, start general focus session
+      router.push('/(main)/focus/session?duration=25');
+      return;
+    }
+    
     if (!selectedTaskId) {
       return;
     }
@@ -41,7 +47,7 @@ export default function SelectTaskScreen() {
           {pendingTasks.length === 0 ? (
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyText}>No pending tasks available</Text>
-              <Text style={styles.emptySubtext}>Add some tasks to start focusing</Text>
+              <Text style={styles.emptySubtext}>You can still start a general focus session</Text>
             </Card>
           ) : (
             pendingTasks.map((task) => (
@@ -83,13 +89,18 @@ export default function SelectTaskScreen() {
           <TouchableOpacity
             style={[
               styles.startButton,
-              !selectedTaskId && styles.disabledButton
+              !selectedTaskId && pendingTasks.length > 0 && styles.disabledButton
             ]}
             onPress={handleStartFocus}
-            disabled={!selectedTaskId}
+            disabled={!selectedTaskId && pendingTasks.length > 0}
           >
             <Text style={styles.startButtonText}>
-              {selectedTaskId ? 'Start Focus Session' : 'Select a Task First'}
+              {pendingTasks.length === 0 
+                ? 'Start General Focus Session' 
+                : selectedTaskId 
+                  ? 'Start Focus Session' 
+                  : 'Select a Task First'
+              }
             </Text>
           </TouchableOpacity>
 

@@ -3,6 +3,8 @@ import { View, StyleSheet, Alert, Text, TextInput, TouchableOpacity } from 'reac
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/stores';
 import { useCallback } from 'react';
+import { Logo, HoverButton } from '@/components/ui';
+import { colors } from '@/config';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -58,6 +60,9 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.surface}>
+        <View style={styles.logoContainer}>
+          <Logo size={80} />
+        </View>
         <Text style={styles.title}>
           Welcome Back
         </Text>
@@ -94,15 +99,13 @@ export default function LoginScreen() {
             </View>
           )}
 
-          <TouchableOpacity
+          <HoverButton
+            title={isLoading ? 'Signing In...' : 'Sign In'}
             onPress={handleLogin}
             disabled={isLoading}
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
+            variant="primary"
+            fullWidth
+          />
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
@@ -119,14 +122,14 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     padding: 24,
     justifyContent: 'center',
   },
   surface: {
     padding: 32,
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.secondary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -138,37 +141,41 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#1e293b',
+    color: colors.text.primary,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 32,
-    color: '#64748b',
+    color: colors.text.secondary,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   form: {
     gap: 16,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border.light,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
   },
   button: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.button.primary,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 16,
   },
   buttonDisabled: {
-    backgroundColor: '#94a3b8',
+    backgroundColor: colors.neutral.silver,
   },
   buttonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -179,10 +186,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 16,
-    color: '#64748b',
+    color: colors.text.secondary,
   },
   link: {
-    color: '#6366f1',
+    color: colors.button.primary,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -190,13 +197,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   errorText: {
-    color: '#ef4444',
+    color: colors.error,
     textAlign: 'center',
     fontSize: 14,
     marginBottom: 4,
   },
   errorHint: {
-    color: '#6366f1',
+    color: colors.button.primary,
     textAlign: 'center',
     fontSize: 12,
     fontStyle: 'italic',

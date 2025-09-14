@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
+import { colors } from '@/config';
 
 interface CardProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ export const Card: React.FC<CardProps> = ({
   elevation = 2,
   padding = 16,
   margin = 0,
-  backgroundColor = '#ffffff',
+  backgroundColor = colors.card.background,
   borderRadius = 8,
 }) => {
   const cardStyle = [
@@ -39,7 +40,7 @@ export const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    shadowColor: '#000',
+    shadowColor: colors.card.shadow,
     elevation: 2,
   },
 });

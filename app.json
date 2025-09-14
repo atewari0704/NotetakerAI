@@ -6,6 +6,12 @@
     ],
     "name": "DeepworkAI",
     "slug": "DeepworkAI",
+    "icon": "./assets/todoify_logo.png",
+    "splash": {
+      "image": "./assets/todoify_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ed752b"
+    },
     "web": {
       "bundler": "metro"
     }

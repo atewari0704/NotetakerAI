@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import { FocusTimer } from './FocusTimer';
 import { useFocusStore, useTaskStore } from '@/stores';
 import { Task } from '@/types/tasks';
+import { Logo, HoverButton } from '@/components/ui';
+import { colors } from '@/config';
 
 interface FocusSessionProps {
   taskId?: string;
@@ -44,15 +46,12 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
   }, [taskId, tasks]);
 
   const handleStartSession = async () => {
-    if (!currentTask) {
-      Alert.alert('No Task', 'Please select a task to focus on');
-      return;
-    }
+    // Allow starting focus session even without a specific task
 
     try {
       await startSession({
-        task_id: currentTask.id,
-        session_name: `Focus on: ${currentTask.title}`,
+        task_id: currentTask?.id || null,
+        session_name: currentTask ? `Focus on: ${currentTask.title}` : 'General Focus Session',
         target_duration: targetDuration,
       });
       setSessionStarted(true);
@@ -148,8 +147,11 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
   if (!sessionStarted) {
     return (
       <View style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Ready to Focus?</Text>
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <Logo size={48} />
+        </View>
+        <Text style={styles.title}>Ready to Focus?</Text>
           
           {currentTask ? (
             <View style={styles.taskCard}>
@@ -164,21 +166,19 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
             </View>
           ) : (
             <View style={styles.noTaskCard}>
-              <Text style={styles.noTaskText}>No tasks available</Text>
-              <Text style={styles.noTaskSubtext}>Add some tasks to start focusing</Text>
+              <Text style={styles.noTaskText}>General Focus Session</Text>
+              <Text style={styles.noTaskSubtext}>Focus on whatever you need to work on</Text>
             </View>
           )}
 
           <View style={styles.controls}>
-            <TouchableOpacity
-              style={[styles.startButton, !currentTask && styles.disabledButton]}
+            <HoverButton
+              title="Start Focus Session"
               onPress={handleStartSession}
-              disabled={!currentTask}
-            >
-              <Text style={styles.startButtonText}>
-                {currentTask ? 'Start Focus Session' : 'No Tasks Available'}
-              </Text>
-            </TouchableOpacity>
+              variant="success"
+              fullWidth
+              size="large"
+            />
 
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Back to Dashboard</Text>
@@ -193,8 +193,12 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
     <View style={styles.focusContainer}>
       {/* Current Task Display */}
       <View style={styles.taskHeader}>
-        <Text style={styles.focusTaskTitle}>{currentTask?.title}</Text>
-        <Text style={styles.focusTaskSubtext}>Stay focused on this task</Text>
+        <Text style={styles.focusTaskTitle}>
+          {currentTask?.title || 'General Focus Session'}
+        </Text>
+        <Text style={styles.focusTaskSubtext}>
+          {currentTask ? 'Stay focused on this task' : 'Focus on whatever you need to work on'}
+        </Text>
       </View>
 
       {/* Timer */}
@@ -223,28 +227,35 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
             <Text style={styles.modalMessage}>
               Choose how to end your focus session:
             </Text>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskInfoText}>📋 Task: "{currentTask?.title}"</Text>
-            </View>
+            {currentTask && (
+              <View style={styles.taskInfo}>
+                <Text style={styles.taskInfoText}>📋 Task: "{currentTask.title}"</Text>
+              </View>
+            )}
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.modalCancelButton}
+              <HoverButton
+                title="Cancel"
                 onPress={cancelEndSession}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.modalEndButton}
+                variant="secondary"
+                size="small"
+                style={{ flex: 1, marginRight: 4 }}
+              />
+              <HoverButton
+                title="End Session"
                 onPress={confirmEndSession}
-              >
-                <Text style={styles.modalEndButtonText}>End Session Only</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.modalCompleteButton}
-                onPress={completeTaskAndEndSession}
-              >
-                <Text style={styles.modalCompleteButtonText}>✓ Complete & End</Text>
-              </TouchableOpacity>
+                variant="danger"
+                size="small"
+                style={{ flex: 1, marginHorizontal: 2 }}
+              />
+              {currentTask && (
+                <HoverButton
+                  title="✓ Complete & End"
+                  onPress={completeTaskAndEndSession}
+                  variant="success"
+                  size="small"
+                  style={{ flex: 1, marginLeft: 4 }}
+                />
+              )}
             </View>
           </View>
         </View>
@@ -256,7 +267,7 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.focus.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -265,10 +276,14 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.focus.text,
     textAlign: 'center',
     marginBottom: 40,
   },
@@ -283,12 +298,12 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.focus.text,
     marginBottom: 8,
   },
   taskDescription: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: colors.focus.secondary,
     marginBottom: 16,
   },
   taskMeta: {
@@ -297,12 +312,12 @@ const styles = StyleSheet.create({
   },
   taskPriority: {
     fontSize: 14,
-    color: '#6366f1',
+    color: colors.focus.primary,
     fontWeight: '500',
   },
   taskDuration: {
     fontSize: 14,
-    color: '#10b981',
+    color: colors.success,
     fontWeight: '500',
   },
   noTaskCard: {
@@ -314,19 +329,19 @@ const styles = StyleSheet.create({
   },
   noTaskText: {
     fontSize: 18,
-    color: '#ef4444',
+    color: colors.error,
     fontWeight: '600',
     marginBottom: 8,
   },
   noTaskSubtext: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: colors.focus.secondary,
   },
   controls: {
     gap: 16,
   },
   startButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -335,7 +350,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#374151',
   },
   startButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -344,12 +359,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#94a3b8',
+    color: colors.focus.secondary,
     fontSize: 16,
   },
   focusContainer: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.focus.background,
   },
   taskHeader: {
     position: 'absolute',
@@ -361,12 +376,12 @@ const styles = StyleSheet.create({
   focusTaskTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.focus.text,
     marginBottom: 4,
   },
   focusTaskSubtext: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: colors.focus.secondary,
   },
   endButton: {
     position: 'absolute',
@@ -378,10 +393,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: colors.error,
   },
   endButtonText: {
-    color: '#ef4444',
+    color: colors.error,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -392,7 +407,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.focus.background,
     borderRadius: 12,
     padding: 24,
     margin: 20,
@@ -404,12 +419,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.focus.text,
     marginBottom: 12,
   },
   modalMessage: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: colors.focus.secondary,
     marginBottom: 16,
     lineHeight: 22,
   },
@@ -421,7 +436,7 @@ const styles = StyleSheet.create({
   },
   taskInfoText: {
     fontSize: 14,
-    color: '#ffffff',
+    color: colors.focus.text,
     fontWeight: '500',
   },
   modalButtons: {
@@ -437,7 +452,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalCancelButtonText: {
-    color: '#94a3b8',
+    color: colors.focus.secondary,
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -445,11 +460,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     flex: 1,
   },
   modalEndButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontWeight: '500',
     textAlign: 'center',
     fontSize: 13,
@@ -458,11 +473,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     flex: 1,
   },
   modalCompleteButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontWeight: '600',
     textAlign: 'center',
     fontSize: 13,

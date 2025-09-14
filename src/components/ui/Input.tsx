@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { TextInput, TextInputProps } from 'react-native-paper';
 import { THEME_CONFIG } from '@/config/app';
+import { colors } from '@/config';
 
 interface CustomInputProps extends Omit<TextInputProps, 'mode'> {
   variant?: 'outlined' | 'filled' | 'flat';
@@ -57,12 +58,12 @@ export const Input: React.FC<CustomInputProps> = ({
 
   const getOutlineColor = (): string => {
     if (error) {
-      return THEME_CONFIG.colors.error;
+      return colors.error;
     }
     if (disabled) {
-      return THEME_CONFIG.colors.textDisabled;
+      return colors.neutral.silver;
     }
-    return THEME_CONFIG.colors.primary;
+    return colors.button.primary;
   };
 
   return (
@@ -71,7 +72,7 @@ export const Input: React.FC<CustomInputProps> = ({
       style={getInputStyle()}
       contentStyle={getTextStyle()}
       outlineColor={getOutlineColor()}
-      activeOutlineColor={THEME_CONFIG.colors.primary}
+      activeOutlineColor={colors.button.primary}
       disabled={disabled}
       error={error}
       {...props}

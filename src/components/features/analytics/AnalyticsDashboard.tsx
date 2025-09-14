@@ -5,6 +5,8 @@ import { StatsCard } from './StatsCard';
 import { ProductivityChart } from './ProductivityChart';
 import { StreakCounter } from './StreakCounter';
 import { useAnalyticsStore, useFocusStore, useTaskStore } from '@/stores';
+import { Logo, HoverButton } from '@/components/ui';
+import { colors } from '@/config';
 
 type TimePeriod = 'week' | 'month';
 
@@ -122,7 +124,12 @@ export const AnalyticsDashboard: React.FC = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Analytics</Text>
+        <View style={styles.headerLeft}>
+          <View style={styles.logoContainer}>
+            <Logo size={28} />
+          </View>
+          <Text style={styles.title}>Analytics</Text>
+        </View>
         <View style={styles.periodSelector}>
           <TouchableOpacity
             style={[styles.periodButton, selectedPeriod === 'week' && styles.periodButtonActive]}
@@ -224,9 +231,12 @@ export const AnalyticsDashboard: React.FC = () => {
       </View>
 
       {/* Action Button */}
-      <TouchableOpacity style={styles.actionButton} onPress={handleStartFocus}>
-        <Text style={styles.actionButtonText}>Start Focus Session</Text>
-      </TouchableOpacity>
+      <HoverButton
+        title="Start Focus Session"
+        onPress={handleStartFocus}
+        variant="primary"
+        fullWidth
+      />
     </ScrollView>
   );
 };
@@ -234,7 +244,7 @@ export const AnalyticsDashboard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.secondary,
   },
   content: {
     padding: 16,
@@ -248,7 +258,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#64748b',
+    color: colors.text.secondary,
   },
   header: {
     flexDirection: 'row',
@@ -257,14 +267,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingTop: 20,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logoContainer: {
+    marginRight: 12,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: colors.text.primary,
   },
   periodSelector: {
     flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.primary.light,
     borderRadius: 8,
     padding: 4,
   },
@@ -274,7 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   periodButtonActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -284,22 +302,22 @@ const styles = StyleSheet.create({
   periodButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
+    color: colors.text.secondary,
   },
   periodButtonTextActive: {
-    color: '#1e293b',
+    color: colors.text.primary,
   },
   demoNotice: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.primary.light,
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: colors.primary.main,
   },
   demoNoticeText: {
     fontSize: 14,
-    color: '#92400e',
+    color: colors.primary.dark,
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -309,7 +327,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
+    color: colors.text.primary,
     marginBottom: 16,
   },
   statsGrid: {
@@ -318,14 +336,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.button.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 24,
   },
   actionButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
