@@ -9,4 +9,7 @@ export * from './Input';
 export * from './Card';
 export * from './Modal';
 export * from './Icon';
+export * from './PriorityButton';
+export * from './TaskIcon';
+export * from './CustomDatePicker';
 

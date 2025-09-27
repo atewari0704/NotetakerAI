@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Text, TextInput, TouchableOpacity, Modal, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore, useTaskStore, useUIStore } from '@/stores';
-import { Card, Logo, HoverButton, HoverTouchable, HoverCheckbox, FloatingActionButton, FocusSessionButton } from '@/components/ui';
+import { Card, Logo, HoverButton, HoverTouchable, HoverCheckbox, FloatingActionButton, FocusSessionButton, PriorityButton, TaskIcon, CustomDatePicker } from '@/components/ui';
 import { ChatModal } from '@/components/features/chat';
 import { TaskDetailModal } from '@/components/features/tasks';
 import { colors } from '@/config';
 import { useButtonHover } from '@/hooks';
+import * as Haptics from 'expo-haptics';
 
 export default function DashboardScreen() {
   const [newTask, setNewTask] = useState('');
@@ -20,6 +21,17 @@ export default function DashboardScreen() {
   const [modalTaskTitle, setModalTaskTitle] = useState('');
   const [modalTaskDescription, setModalTaskDescription] = useState('');
   const [modalTaskPriority, setModalTaskPriority] = useState(2);
+  const [modalTaskDate, setModalTaskDate] = useState<Date | null>(null);
+  const [showModalDatePicker, setShowModalDatePicker] = useState(false);
+  
+  // Inline task creation state
+  const [showInlineTaskForm, setShowInlineTaskForm] = useState(false);
+  const [inlineTaskTitle, setInlineTaskTitle] = useState('');
+  const [inlineTaskDescription, setInlineTaskDescription] = useState('');
+  const [inlineTaskPriority, setInlineTaskPriority] = useState<number | null>(null);
+  const [inlineTaskDate, setInlineTaskDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   
   const { user, logout } = useAuthStore();
   const { 
@@ -38,6 +50,9 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // Auto-show inline form when there are no tasks
+  // Removed auto-show form when no tasks - user should click button to add tasks
 
   const handleAddTask = async () => {
     if (!newTask.trim()) {
@@ -70,11 +85,15 @@ export default function DashboardScreen() {
 
   const getPriorityColor = (priority: number) => {
     switch (priority) {
-      case 1: return '#dc2626'; // High priority - red
-      case 2: return '#d1d5db'; // Medium priority - gray
-      case 3: return '#d1d5db'; // Low priority - gray
-      default: return '#d1d5db'; // Default - gray
+      case 1: return '#dc2626'; // Red for High priority
+      case 2: return '#f59e0b'; // Yellow/Orange for Medium priority
+      case 3: return '#10b981'; // Green for Low priority
+      default: return '#d1d5db';
     }
+  };
+
+  const handleFabPress = () => {
+    setShowAddTaskModal(true);
   };
 
   const handleStartFocus = () => {
@@ -124,15 +143,129 @@ export default function DashboardScreen() {
     await fetchTasks(); // Refresh the task list
   };
 
-  const handleFabPress = () => {
-    setShowAddTaskModal(true);
+  const handleModalDatePress = () => {
+    console.log('Modal date button pressed, current date:', modalTaskDate);
+    if (modalTaskDate) {
+      setModalTaskDate(null);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        console.log('Haptics not available:', error);
+      }
+    } else {
+      setShowModalDatePicker(true);
+    }
   };
 
+  const handleModalDateChange = (selectedDate: Date) => {
+    console.log('Modal date selected:', selectedDate);
+    setModalTaskDate(selectedDate);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+    setShowModalDatePicker(false);
+  };
   const handleCloseAddTaskModal = () => {
     setShowAddTaskModal(false);
     setModalTaskTitle('');
     setModalTaskDescription('');
     setModalTaskPriority(2);
+    setModalTaskDate(null);
+  };
+
+  const handleAddInlineTask = async () => {
+    if (!inlineTaskTitle.trim()) return;
+    
+    setIsAddingTask(true);
+    try {
+      await createTask({
+        title: inlineTaskTitle.trim(),
+        description: inlineTaskDescription.trim() || undefined,
+        priority: inlineTaskPriority || 2,
+        status: 'pending',
+        dueDate: inlineTaskDate ? inlineTaskDate.toISOString() : undefined,
+        tags: [],
+      });
+      
+      // Reset form
+      setInlineTaskTitle('');
+      setInlineTaskDescription('');
+      setInlineTaskPriority(null);
+      setInlineTaskDate(null);
+      setShowInlineTaskForm(false);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      Alert.alert('Error', 'Failed to create task');
+    } finally {
+      setIsAddingTask(false);
+    }
+  };
+
+  const handleCancelInlineTask = () => {
+    setInlineTaskTitle('');
+    setInlineTaskDescription('');
+    setInlineTaskPriority(null);
+    setInlineTaskDate(null);
+    setShowInlineTaskForm(false);
+  };
+
+  const handleDateChange = (selectedDate: Date) => {
+    console.log('Date selected:', selectedDate);
+    setInlineTaskDate(selectedDate);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+  };
+
+  const handleDatePress = () => {
+    console.log('Date button pressed, current date:', inlineTaskDate);
+    if (inlineTaskDate) {
+      setInlineTaskDate(null);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        console.log('Haptics not available:', error);
+      }
+    } else {
+      setShowDatePicker(true);
+    }
+  };
+
+  const handlePriorityPress = () => {
+    console.log('Priority button pressed, current priority:', inlineTaskPriority);
+    setShowPriorityPicker(true);
+  };
+
+  const handlePrioritySelect = (priority: number) => {
+    console.log('Priority selected:', priority);
+    setInlineTaskPriority(priority);
+    setShowPriorityPicker(false);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.log('Haptics not available:', error);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getPriorityText = (priority: number) => {
+    switch (priority) {
+      case 1: return 'High';
+      case 2: return 'Medium';
+      case 3: return 'Low';
+      default: return 'Medium';
+    }
   };
 
   const handleAddTaskFromModal = async () => {
@@ -147,6 +280,8 @@ export default function DashboardScreen() {
         title: modalTaskTitle.trim(),
         description: modalTaskDescription.trim() || undefined,
         priority: modalTaskPriority,
+        status: 'pending',
+        dueDate: modalTaskDate ? modalTaskDate.toISOString() : undefined,
         tags: [],
       });
       handleCloseAddTaskModal();
@@ -213,7 +348,7 @@ export default function DashboardScreen() {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
-                <Logo size={32} />
+                <Logo size={160} />
               </View>
               <View>
                 <Text style={styles.greeting}>
@@ -237,13 +372,106 @@ export default function DashboardScreen() {
 
 
         {/* Tasks List */}
-        <View style={styles.tasksContainer}>
-          <Text style={styles.tasksTitle}>Your Tasks ({tasks.length})</Text>
+        <Card style={styles.tasksCard}>
+          <View style={styles.tasksHeader}>
+            <Text style={styles.tasksTitle}>Your Tasks ({tasks.length})</Text>
+          </View>
+          
+          {/* Add Task Button - Always visible and left-aligned */}
+          {!showInlineTaskForm && (
+            <View style={styles.addTaskButtonContainer}>
+              <HoverTouchable 
+                onPress={() => setShowInlineTaskForm(true)}
+                style={styles.addTaskButton}
+                hoverStyle={{ opacity: 0.8 }}
+              >
+                <Text style={styles.addTaskButtonIcon}>+</Text>
+                <Text style={styles.addTaskButtonText}>Add task</Text>
+              </HoverTouchable>
+            </View>
+          )}
+
+          {/* Inline Task Creation Form */}
+          {showInlineTaskForm && (
+            <View style={styles.inlineTaskForm}>
+              <TextInput
+                placeholder="Enter task title..."
+                value={inlineTaskTitle}
+                onChangeText={setInlineTaskTitle}
+                style={styles.inlineTaskTitleInput}
+                autoFocus
+                returnKeyType="next"
+                blurOnSubmit={false}
+                placeholderTextColor={colors.text.tertiary}
+              />
+              
+              <TextInput
+                placeholder="Enter task description..."
+                value={inlineTaskDescription}
+                onChangeText={setInlineTaskDescription}
+                style={styles.inlineTaskDescriptionInput}
+                multiline
+                numberOfLines={2}
+                returnKeyType="done"
+                placeholderTextColor={colors.text.tertiary}
+              />
+              
+              {/* Date and Priority Buttons */}
+              <View style={styles.inlineTaskMetaButtons}>
+                <HoverTouchable 
+                  style={styles.inlineTaskMetaButton}
+                  hoverStyle={{ opacity: 0.8 }}
+                  onPress={handleDatePress}
+                >
+                  <TaskIcon name="calendar" size={16} color={colors.text.secondary} />
+                  <Text style={styles.inlineTaskMetaButtonText}>
+                    {inlineTaskDate ? formatDate(inlineTaskDate) : 'Date'}
+                  </Text>
+                </HoverTouchable>
+                
+                <HoverTouchable 
+                  style={styles.inlineTaskMetaButton}
+                  hoverStyle={{ opacity: 0.8 }}
+                  onPress={handlePriorityPress}
+                >
+                  <TaskIcon name="flag" size={16} color={colors.text.secondary} />
+                  <Text style={styles.inlineTaskMetaButtonText}>
+                    {inlineTaskPriority ? getPriorityText(inlineTaskPriority) : 'Priority'}
+                  </Text>
+                </HoverTouchable>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.inlineTaskActions}>
+                <HoverButton
+                  title="Cancel"
+                  onPress={handleCancelInlineTask}
+                  variant="secondary"
+                  size="small"
+                  style={styles.inlineTaskCancelButton}
+                  textStyle={styles.inlineTaskCancelButtonText}
+                />
+                <HoverButton
+                  title={isAddingTask ? 'Adding...' : 'Add task'}
+                  onPress={handleAddInlineTask}
+                  disabled={isAddingTask || !inlineTaskTitle.trim()}
+                  variant="primary"
+                  size="small"
+                  style={styles.inlineTaskAddButton}
+                />
+              </View>
+            </View>
+          )}
           
           {isLoading ? (
             <Text style={styles.loadingText}>Loading tasks...</Text>
           ) : (
-            <View style={styles.tasksList}>
+            <ScrollView 
+              style={styles.tasksScrollContainer}
+              contentContainerStyle={styles.tasksList}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
               {/* Pending Tasks */}
               {pendingTasks.map((task) => (
                 <View key={task.id} style={styles.taskItem}>
@@ -260,14 +488,16 @@ export default function DashboardScreen() {
                 </View>
               ))}
               
-            </View>
+            </ScrollView>
           )}
-        </View>
+        </Card>
 
         {/* Completed Tasks Section */}
         {completedTasks.length > 0 && (
-          <View style={styles.completedTasksContainer}>
-            <Text style={styles.completedTasksTitle}>Completed ({completedTasks.length})</Text>
+          <Card style={styles.completedTasksCard}>
+            <View style={styles.completedTasksHeader}>
+              <Text style={styles.completedTasksTitle}>Completed ({completedTasks.length})</Text>
+            </View>
             <View style={styles.completedTasksList}>
               {completedTasks.map((task) => (
                 <View key={task.id} style={[styles.taskItem, styles.completedTaskItem]}>
@@ -292,7 +522,7 @@ export default function DashboardScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </Card>
         )}
 
         {/* Chat with AI */}
@@ -333,13 +563,15 @@ export default function DashboardScreen() {
             Ready to Focus?
           </Text>
           <Text style={styles.focusDescription}>
-            Start a focused work session to tackle your most important task.
+            {pendingTasks.length > 0 
+              ? "Start a focused work session to tackle your most important task."
+              : "Start a general focus session to work on anything you need to focus on."
+            }
           </Text>
           <HoverButton
-            title="Start Focus Session"
+            title={pendingTasks.length > 0 ? "Start Focus Session" : "Start General Focus"}
             onPress={handleStartFocus}
             variant="primary"
-            disabled={pendingTasks.length === 0}
             fullWidth
           />
         </Card>
@@ -449,41 +681,116 @@ export default function DashboardScreen() {
                 <Text style={styles.addTaskModalPriorityLabel}>Priority</Text>
                 <View style={styles.addTaskModalPrioritySelector}>
                   {[1, 2, 3].map((priority) => (
-                    <TouchableOpacity
+                    <PriorityButton
                       key={priority}
-                      style={[
-                        styles.addTaskModalPriorityOption,
-                        modalTaskPriority === priority && styles.addTaskModalPriorityOptionSelected
-                      ]}
+                      priority={priority}
+                      isSelected={modalTaskPriority === priority}
                       onPress={() => setModalTaskPriority(priority)}
-                    >
-                      <Text style={[
-                        styles.addTaskModalPriorityOptionText,
-                        modalTaskPriority === priority && styles.addTaskModalPriorityOptionTextSelected
-                      ]}>
-                        {priority === 1 ? 'High' : priority === 2 ? 'Medium' : 'Low'}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
+              </View>
+
+              {/* Date Selector */}
+              <View style={styles.addTaskModalDateSection}>
+                <Text style={styles.addTaskModalDateLabel}>Due Date (Optional)</Text>
+                <HoverTouchable 
+                  style={styles.addTaskModalDateButton}
+                  hoverStyle={{ opacity: 0.8 }}
+                  onPress={handleModalDatePress}
+                >
+                  <TaskIcon name="calendar" size={16} color={colors.text.secondary} />
+                  <Text style={styles.addTaskModalDateButtonText}>
+                    {modalTaskDate ? formatDate(modalTaskDate) : 'Select Date'}
+                  </Text>
+                </HoverTouchable>
               </View>
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* Floating Action Button */}
-      <FloatingActionButton
+      {/* Modal Date Picker */}
+      <CustomDatePicker
+        visible={showModalDatePicker}
+        onClose={() => setShowModalDatePicker(false)}
+        onDateSelect={handleModalDateChange}
+        selectedDate={modalTaskDate || undefined}
+      />
+
+      {/* Floating Action Button - Hidden in favor of inline Add Task button */}
+      {/* <FloatingActionButton
         onPress={handleFabPress}
         style={styles.fab}
-      />
+      /> */}
 
       {/* Focus Session Button */}
       <FocusSessionButton
         onPress={handleStartFocus}
         style={styles.focusSessionButton}
-        disabled={pendingTasks.length === 0}
       />
+
+      {/* Add Task Floating Action Button */}
+      <FloatingActionButton
+        onPress={handleFabPress}
+        icon="+"
+        style={styles.addTaskFab}
+      />
+
+      {/* Custom Date Picker */}
+      <CustomDatePicker
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onDateSelect={handleDateChange}
+        selectedDate={inlineTaskDate || undefined}
+      />
+
+      {/* Priority Picker Modal */}
+      {showPriorityPicker && (
+        <Modal
+          visible={showPriorityPicker}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowPriorityPicker(false)}
+        >
+          <TouchableOpacity 
+            style={styles.priorityPickerOverlay}
+            activeOpacity={1}
+            onPress={() => setShowPriorityPicker(false)}
+          >
+            <TouchableOpacity 
+              style={styles.priorityPickerContainer}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={styles.priorityPickerTitle}>Select Priority</Text>
+              <View style={styles.priorityPickerOptions}>
+                {[1, 2, 3].map((priority) => (
+                  <TouchableOpacity
+                    key={priority}
+                    style={[
+                      styles.priorityPickerOption,
+                      inlineTaskPriority === priority && styles.priorityPickerOptionSelected
+                    ]}
+                    onPress={() => handlePrioritySelect(priority)}
+                  >
+                    <View style={[
+                      styles.priorityIndicator,
+                      { backgroundColor: getPriorityColor(priority) }
+                    ]} />
+                    <Text style={[
+                      styles.priorityPickerOptionText,
+                      inlineTaskPriority === priority && styles.priorityPickerOptionTextSelected
+                    ]}>
+                      {getPriorityText(priority)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -497,12 +804,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingTop: 20,
     paddingBottom: 120,
+    paddingRight: 20,
+    paddingLeft: 0,
   },
   header: {
-    padding: 24,
-    marginBottom: 16,
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingLeft: 0,
+    paddingRight: 28,
+    marginBottom: 20,
     borderRadius: 12,
     backgroundColor: colors.background.primary,
   },
@@ -518,6 +830,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginRight: 12,
+    marginLeft: -8,
   },
   greeting: {
     fontSize: 20,
@@ -586,14 +899,127 @@ const styles = StyleSheet.create({
     color: colors.text.inverse,
     fontWeight: '600',
   },
-  tasksContainer: {
+  tasksCard: {
     marginBottom: 16,
+    backgroundColor: colors.background.primary,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  tasksContainer: {
+    marginBottom: 24,
+  },
+  tasksHeader: {
+    marginBottom: 20,
+  },
+  addTaskButtonContainer: {
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   tasksTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text.primary,
+  },
+  addTaskButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.button.primary,
+    gap: 8,
+    minHeight: 44,
+    minWidth: 120,
+  },
+  addTaskButtonIcon: {
+    color: colors.text.inverse,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  addTaskButtonText: {
+    color: colors.text.inverse,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  inlineTaskForm: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    shadowColor: colors.card.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inlineTaskTitleInput: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
     marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+    minHeight: 50,
+  },
+  inlineTaskDescriptionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.secondary,
+    marginBottom: 8,
+  },
+  inlineTaskDescriptionInput: {
+    fontSize: 14,
+    color: colors.text.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+    textAlignVertical: 'top',
+    minHeight: 60,
+  },
+  inlineTaskMetaButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  inlineTaskMetaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    backgroundColor: colors.background.primary,
+    gap: 6,
+  },
+  inlineTaskMetaButtonText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  inlineTaskActions: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  inlineTaskCancelButton: {
+    backgroundColor: colors.button.primary, // Orange Cancel button
+    borderColor: colors.button.primary,
+  },
+  inlineTaskCancelButtonText:{
+    color: colors.text.inverse, //white text
+  }
+  ,
+  inlineTaskAddButton: {
+    backgroundColor: colors.button.primary, // Orange Add task button
+    borderColor: colors.button.primary,
   },
   loadingText: {
     textAlign: 'center',
@@ -608,6 +1034,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text.secondary,
     textAlign: 'center',
+  },
+  tasksScrollContainer: {
+    maxHeight: 300, // Maximum height before scrolling
   },
   tasksList: {
     gap: 16,
@@ -905,25 +1334,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  addTaskModalPriorityOption: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
+  addTaskModalDateSection: {
+    marginBottom: 24,
   },
-  addTaskModalPriorityOptionSelected: {
-    backgroundColor: '#dc2626',
-    borderColor: '#dc2626',
-  },
-  addTaskModalPriorityOptionText: {
-    fontSize: 16,
-    color: '#6b7280',
+  addTaskModalDateLabel: {
+    fontSize: 18,
     fontWeight: '500',
+    color: '#374151',
+    marginBottom: 16,
   },
-  addTaskModalPriorityOptionTextSelected: {
-    color: '#ffffff',
+  addTaskModalDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  addTaskModalDateButtonText: {
+    fontSize: 16,
+    color: colors.text.primary,
+    marginLeft: 8,
+  },
+  completedTasksCard: {
+    marginBottom: 16,
+    backgroundColor: colors.background.primary,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  completedTasksHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   completedTasksContainer: {
     marginBottom: 16,
@@ -941,8 +1387,61 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 20,
   },
+  addTaskFab: {
+    bottom: 20,
+    right: 20,
+  },
   focusSessionButton: {
     bottom: 20,
     left: 20,
+  },
+  priorityPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priorityPickerContainer: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 300,
+  },
+  priorityPickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  priorityPickerOptions: {
+    gap: 12,
+  },
+  priorityPickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.background.secondary,
+  },
+  priorityPickerOptionSelected: {
+    backgroundColor: colors.primary.light,
+  },
+  priorityIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  priorityPickerOptionText: {
+    fontSize: 16,
+    color: colors.text.primary,
+    fontWeight: '500',
+  },
+  priorityPickerOptionTextSelected: {
+    color: colors.text.primary,
+    fontWeight: '600',
   },
 });

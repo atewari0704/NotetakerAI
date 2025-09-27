@@ -72,7 +72,7 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <View style={styles.surface}>
         <View style={styles.logoContainer}>
-          <Logo size={80} />
+          <Logo size={250} />
         </View>
         <Text style={styles.title}>
           Create Account

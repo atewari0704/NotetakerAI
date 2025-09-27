@@ -149,7 +149,7 @@ export const FocusSession: React.FC<FocusSessionProps> = ({
       <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Logo size={48} />
+          <Logo size={120} />
         </View>
         <Text style={styles.title}>Ready to Focus?</Text>
           

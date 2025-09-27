@@ -125,9 +125,13 @@ export const AnalyticsDashboard: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.logoContainer}>
-            <Logo size={28} />
-          </View>
+          <TouchableOpacity 
+            style={styles.logoContainer}
+            onPress={() => router.push('/(main)/dashboard')}
+            activeOpacity={0.7}
+          >
+            <Logo size={100} />
+          </TouchableOpacity>
           <Text style={styles.title}>Analytics</Text>
         </View>
         <View style={styles.periodSelector}>

@@ -285,14 +285,21 @@ export const AppIcon: React.FC<IconProps> = ({
 
 // Logo component using the actual PNG file
 export const Logo: React.FC<LogoProps> = ({ 
-  size = 60, 
+  size = 150, 
   style 
 }) => {
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
       <Image
         source={require('../../../assets/todoify_logo.png')}
-        style={{ width: size, height: size }}
+        style={{ 
+          width: size, 
+          height: size,
+          minWidth: size,
+          minHeight: size,
+          maxWidth: size,
+          maxHeight: size
+        }}
         resizeMode="contain"
       />
     </View>

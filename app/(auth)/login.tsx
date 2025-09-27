@@ -9,9 +9,9 @@ import { colors } from '@/config';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login, error, clearError } = useAuthStore();
+  const { login, error, clearError, isLoading } = useAuthStore();
 
   // Clear errors when screen comes into focus
   useFocusEffect(
@@ -26,10 +26,20 @@ export default function LoginScreen() {
       return;
     }
 
+    // Prevent multiple login attempts
+    if (isSubmitting || isLoading) {
+      console.log('Login already in progress, ignoring duplicate request');
+      return;
+    }
+
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       clearError();
+      console.log('Starting login process...');
+      
       await login({ email, password });
+      
+      console.log('Login successful, redirecting to dashboard');
       router.replace('/(main)/dashboard');
     } catch (err) {
       console.error('Login error:', err);
@@ -53,64 +63,66 @@ export default function LoginScreen() {
         Alert.alert('Login Error', errorMessage);
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  const isLoginDisabled = isSubmitting || isLoading || !email || !password;
+
   return (
     <View style={styles.container}>
-      <View style={styles.surface}>
-        <View style={styles.logoContainer}>
-          <Logo size={80} />
-        </View>
-        <Text style={styles.title}>
-          Welcome Back
-        </Text>
-        <Text style={styles.subtitle}>
-          Sign in to continue your productivity journey
-        </Text>
+      <View style={styles.content}>
+        <Logo size={250} style={styles.logo} />
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Sign in to continue</Text>
 
         <View style={styles.form}>
           <TextInput
+            style={styles.input}
             placeholder="Email"
+            placeholderTextColor={colors.text.tertiary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            style={styles.input}
+            autoCorrect={false}
+            editable={!isSubmitting && !isLoading}
           />
 
           <TextInput
+            style={styles.input}
             placeholder="Password"
+            placeholderTextColor={colors.text.tertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            style={styles.input}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!isSubmitting && !isLoading}
           />
 
           {error && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-              {(error.includes('register') || error.includes('account not found')) && (
-                <Text style={styles.errorHint}>
-                  💡 Don't have an account? Tap "Sign Up" below to create one!
-                </Text>
-              )}
-            </View>
+            <Text style={styles.errorText}>{error}</Text>
           )}
 
           <HoverButton
-            title={isLoading ? 'Signing In...' : 'Sign In'}
+            title={isSubmitting || isLoading ? "Signing In..." : "Sign In"}
             onPress={handleLogin}
-            disabled={isLoading}
             variant="primary"
+            size="large"
             fullWidth
+            disabled={isLoginDisabled}
+            style={styles.loginButton}
           />
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>Don't have an account? </Text>
             <Link href="/(auth)/register" asChild>
-              <Text style={styles.link}>Sign Up</Text>
+              <TouchableOpacity disabled={isSubmitting || isLoading}>
+                <Text style={[styles.signupLink, (isSubmitting || isLoading) && styles.disabledText]}>
+                  Sign Up
+                </Text>
+              </TouchableOpacity>
             </Link>
           </View>
         </View>
@@ -123,90 +135,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
-    padding: 24,
-    justifyContent: 'center',
   },
-  surface: {
-    padding: 32,
-    borderRadius: 12,
-    backgroundColor: colors.background.secondary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  logo: {
+    marginBottom: 32,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
     color: colors.text.primary,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 32,
     color: colors.text.secondary,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 48,
   },
   form: {
-    gap: 16,
+    width: '100%',
+    maxWidth: 400,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border.light,
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
+    color: colors.text.primary,
     backgroundColor: colors.background.primary,
-  },
-  button: {
-    backgroundColor: colors.button.primary,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.neutral.silver,
-  },
-  buttonText: {
-    color: colors.text.inverse,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-  },
-  link: {
-    color: colors.button.primary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  errorContainer: {
-    marginTop: 8,
+    marginBottom: 16,
   },
   errorText: {
     color: colors.error,
-    textAlign: 'center',
     fontSize: 14,
-    marginBottom: 4,
-  },
-  errorHint: {
-    color: colors.button.primary,
+    marginBottom: 16,
     textAlign: 'center',
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 4,
+  },
+  loginButton: {
+    marginBottom: 24,
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signupText: {
+    fontSize: 16,
+    color: colors.text.secondary,
+  },
+  signupLink: {
+    fontSize: 16,
+    color: colors.button.primary,
+    fontWeight: '600',
+  },
+  disabledText: {
+    color: colors.text.tertiary,
   },
 });

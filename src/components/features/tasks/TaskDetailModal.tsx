@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Task } from '@/types/tasks';
+import { PriorityButton } from '@/components/ui';
 
 interface TaskDetailModalProps {
   visible: boolean;
@@ -109,9 +110,9 @@ export default function TaskDetailModal({
 
   const getPriorityColor = (priority: number) => {
     switch (priority) {
-      case 1: return '#dc2626';
-      case 2: return '#d1d5db';
-      case 3: return '#d1d5db';
+      case 1: return '#dc2626'; // Red for High priority
+      case 2: return '#f59e0b'; // Yellow/Orange for Medium priority
+      case 3: return '#10b981'; // Green for Low priority
       default: return '#d1d5db';
     }
   };
@@ -190,17 +191,13 @@ export default function TaskDetailModal({
               {isEditing ? (
                 <View style={styles.prioritySelector}>
                   {[1, 2, 3].map((priority) => (
-                    <TouchableOpacity
+                    <PriorityButton
                       key={priority}
-                      style={[
-                        styles.priorityOption,
-                        { backgroundColor: getPriorityColor(priority) },
-                        editedPriority === priority && styles.selectedPriority,
-                      ]}
+                      priority={priority}
+                      isSelected={editedPriority === priority}
+                      showNumber={true}
                       onPress={() => setEditedPriority(priority)}
-                    >
-                      <Text style={styles.priorityOptionText}>{priority}</Text>
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
               ) : (
@@ -423,24 +420,6 @@ const styles = StyleSheet.create({
   prioritySelector: {
     flexDirection: 'row',
     gap: 8,
-  },
-  priorityOption: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.6,
-  },
-  selectedPriority: {
-    opacity: 1,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
-  priorityOptionText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   priorityTag: {
     paddingHorizontal: 12,

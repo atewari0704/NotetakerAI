@@ -2,50 +2,48 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores';
+import { useAuthListener } from '@/hooks';
 import { AuthDebugger } from '@/components/debug/AuthDebugger';
 
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, isInitialized, user, initializeAuth, error } = useAuthStore();
+  
+  // Set up auth state listener
+  useAuthListener();
 
   useEffect(() => {
-    // Initialize authentication on app start
-    if (!isInitialized) {
+    // Only initialize authentication once when the app first loads
+    if (!isInitialized && !isLoading) {
+      console.log('Initializing authentication for the first time...');
       initializeAuth();
     }
-  }, [isInitialized, initializeAuth]);
+  }, [isInitialized, isLoading, initializeAuth]);
 
   useEffect(() => {
     // Redirect based on authentication status
     if (isInitialized && !isLoading) {
+      console.log('Auth state:', { isAuthenticated, hasUser: !!user });
       if (isAuthenticated && user) {
+        console.log('User is authenticated, redirecting to dashboard');
         router.replace('/(main)/dashboard');
       } else {
+        console.log('User is not authenticated, redirecting to login');
         router.replace('/(auth)/login');
       }
     }
   }, [isAuthenticated, isLoading, isInitialized, user]);
 
-  // Fallback timeout to prevent infinite loading
+  // Reduced timeout to prevent long loading screens
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading && !isInitialized) {
         console.warn('Authentication initialization timeout, redirecting to login');
         router.replace('/(auth)/login');
       }
-    }, 2000); // 2 second timeout
+    }, 2000); // Reduced from 3 to 2 seconds
 
     return () => clearTimeout(timeout);
   }, [isLoading, isInitialized]);
-
-  // Force redirect if stuck
-  useEffect(() => {
-    const forceTimeout = setTimeout(() => {
-      console.warn('Force redirect to login after 5 seconds');
-      router.replace('/(auth)/login');
-    }, 5000);
-
-    return () => clearTimeout(forceTimeout);
-  }, []);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
