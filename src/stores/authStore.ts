@@ -29,7 +29,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       console.log('Starting login process...');
-      const { user, session } = await authApi.login(credentials);
+      
+      // Add timeout protection to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Login timeout')), 15000); // 15 second timeout
+      });
+      
+      const loginPromise = authApi.login(credentials);
+      
+      // Race between login and timeout
+      const { user, session } = await Promise.race([loginPromise, timeoutPromise]);
+      
       console.log('Login successful, setting user state');
       set({
         user,
@@ -39,11 +49,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       });
     } catch (error: any) {
       console.error('Login failed:', error);
+      
+      let errorMessage = 'Login failed';
+      if (error.message === 'Login timeout') {
+        errorMessage = 'Login timed out. Please check your connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       set({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: error.message || 'Login failed',
+        error: errorMessage,
       });
       throw error;
     }

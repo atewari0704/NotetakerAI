@@ -3,50 +3,65 @@ import { User, LoginCredentials, RegisterData, AuthResponse } from '@/types/auth
 
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
+    console.log('Auth API: Starting login for:', credentials.email);
+    
+    // Add timeout protection to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Login API timeout')), 12000); // 12 second timeout
     });
+    
+    const loginPromise = (async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
 
-    if (error) {
-      // Check for specific error types and provide user-friendly messages
-      if (error.message.includes('Invalid login credentials')) {
-        throw new Error('Invalid email or password. Please check your credentials and try again.');
-      } else if (error.message.includes('Email not confirmed')) {
-        throw new Error('Please check your email and click the confirmation link before logging in.');
-      } else if (error.message.includes('User not found') || error.message.includes('No user found')) {
-        throw new Error('No account found with this email address. Please register first or check your email.');
-      } else {
-        throw new Error(error.message);
+      if (error) {
+        // Check for specific error types and provide user-friendly messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and click the confirmation link before logging in.');
+        } else if (error.message.includes('User not found') || error.message.includes('No user found')) {
+          throw new Error('No account found with this email address. Please register first or check your email.');
+        } else {
+          throw new Error(error.message);
+        }
       }
-    }
 
-    if (!data.user) {
-      throw new Error('Login failed. Please try again.');
-    }
-
-    // Get user profile from users table
-    const { data: userData, error: userError } = await supabase
-      .from(TABLES.USERS)
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (userError) {
-      // If user profile doesn't exist, provide a helpful message
-      if (userError.code === 'PGRST116') {
-        throw new Error('Account not found. Please register first or contact support if you believe this is an error.');
+      if (!data.user) {
+        throw new Error('Login failed. Please try again.');
       }
-      throw new Error(userError.message);
-    }
 
-    return {
-      user: userData,
-      session: {
-        access_token: data.session?.access_token || '',
-        refresh_token: data.session?.refresh_token || '',
-      },
-    };
+      console.log('Auth API: Supabase auth successful, fetching user profile...');
+
+      // Get user profile from users table
+      const { data: userData, error: userError } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (userError) {
+        // If user profile doesn't exist, provide a helpful message
+        if (userError.code === 'PGRST116') {
+          throw new Error('Account not found. Please register first or contact support if you believe this is an error.');
+        }
+        throw new Error(userError.message);
+      }
+
+      console.log('Auth API: User profile fetched successfully');
+      return {
+        user: userData,
+        session: {
+          access_token: data.session?.access_token || '',
+          refresh_token: data.session?.refresh_token || '',
+        },
+      };
+    })();
+    
+    // Race between login and timeout
+    return await Promise.race([loginPromise, timeoutPromise]);
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {

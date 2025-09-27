@@ -37,7 +37,17 @@ export default function LoginScreen() {
       clearError();
       console.log('Starting login process...');
       
+      // Add fallback timeout to prevent hanging
+      const fallbackTimeout = setTimeout(() => {
+        console.log('Login fallback timeout triggered');
+        setIsSubmitting(false);
+        Alert.alert('Login Timeout', 'Login is taking longer than expected. Please check your connection and try again.');
+      }, 20000); // 20 second fallback timeout
+      
       await login({ email, password });
+      
+      // Clear the fallback timeout if login succeeds
+      clearTimeout(fallbackTimeout);
       
       console.log('Login successful, redirecting to dashboard');
       router.replace('/(main)/dashboard');

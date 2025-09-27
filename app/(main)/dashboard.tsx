@@ -45,7 +45,8 @@ export default function DashboardScreen() {
     fetchTasks, 
     getPendingTasks, 
     getInProgressTasks,
-    getCompletedTasks 
+    getCompletedTasks,
+    forceClearLoading
   } = useTaskStore();
   const { openModal, closeModal, modals } = useUIStore();
   
@@ -62,6 +63,23 @@ export default function DashboardScreen() {
 
   console.log('Auth state check:', { authLoading, user: !!user });
   
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  // Fallback timeout to prevent loading state from getting stuck
+  useEffect(() => {
+    if (isLoading) {
+      const fallbackTimeout = setTimeout(() => {
+        console.log('Loading timeout fallback triggered - forcing clear');
+        forceClearLoading();
+      }, 8000); // 8 second fallback timeout
+
+      return () => clearTimeout(fallbackTimeout);
+    }
+  }, [isLoading, forceClearLoading]);
+
   // CONDITIONAL RETURN AFTER ALL HOOKS
   if (authLoading) {
     return (
@@ -72,10 +90,6 @@ export default function DashboardScreen() {
       </View>
     );
   }
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
 
   // Auto-show inline form when there are no tasks
   // Removed auto-show form when no tasks - user should click button to add tasks
@@ -202,67 +216,88 @@ export default function DashboardScreen() {
   };
 
   const handleAddInlineTask = async () => {
+    console.log('=== TASK CREATION DEBUG START ===');
     console.log('handleAddInlineTask function called');
-    console.log('inlineTaskTitle value:', JSON.stringify(inlineTaskTitle));
-    console.log('inlineTaskTitle trimmed:', JSON.stringify(inlineTaskTitle.trim()));
-    console.log('inlineTaskTitle length:', inlineTaskTitle.length);
+    console.log('Form data:', {
+      title: inlineTaskTitle,
+      description: inlineTaskDescription,
+      priority: inlineTaskPriority,
+      dueDate: inlineTaskDate,
+      user: user?.id
+    });
+    
     if (!inlineTaskTitle.trim()) {
       console.log('No title provided, returning early');
+      Alert.alert('Error', 'Please enter a task title');
       return;
     }
     
     if (!user) {
       console.log('No user found, showing alert');
-      console.log('User object:', user);
-      console.log('Auth store state:', { user, isAuthenticated: !!user });
       Alert.alert('Error', 'You must be logged in to create tasks');
       return;
     }
     
     console.log('User found, proceeding with task creation');
-    console.log('Adding inline task:', {
-      title: inlineTaskTitle.trim(),
-      description: inlineTaskDescription.trim(),
-      priority: inlineTaskPriority || 2,
-      dueDate: inlineTaskDate,
-      user: user?.id
-    });
-    
-    console.log('Setting isAddingTask to true');
     setIsAddingTask(true);
-    console.log('About to call createTask');
+    
     try {
-      console.log('Inside try block, calling createTask');
-      await createTask({
+      console.log('About to call createTask with timeout protection');
+      
+      // Add timeout protection to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Task creation timeout')), 10000); // 10 second timeout
+      });
+      
+      const createTaskPromise = createTask({
         title: inlineTaskTitle.trim(),
         description: inlineTaskDescription.trim() || undefined,
         priority: inlineTaskPriority || 2,
-        status: 'pending',
-        dueDate: inlineTaskDate ? inlineTaskDate.toISOString() : undefined,
+        due_date: inlineTaskDate || undefined,
         tags: [],
+        ai_metadata: {},
       });
       
-      console.log('createTask completed successfully');
-      console.log('Task created successfully, refreshing tasks...');
-      // Refresh tasks to show the new task
-      await fetchTasks();
+      console.log('Starting race between createTask and timeout');
+      // Race between task creation and timeout
+      const result = await Promise.race([createTaskPromise, timeoutPromise]);
+      console.log('Task creation completed successfully:', result);
       
-      // Reset form
+      // Reset form immediately for better UX
       setInlineTaskTitle('');
       setInlineTaskDescription('');
       setInlineTaskPriority(null);
       setInlineTaskDate(null);
       setShowInlineTaskForm(false);
-    } catch (error) {
-      console.error('Failed to create inline task:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      Alert.alert('Error', `Failed to create task: ${error.message || 'Unknown error'}`);
+      
+      console.log('Form reset completed, starting background refresh');
+      // Refresh tasks in background with timeout protection
+      setTimeout(() => {
+        fetchTasks().catch(error => {
+          console.error('Failed to refresh tasks:', error);
+          // Don't show error to user for refresh failure
+        });
+      }, 100); // Small delay to ensure task is created first
+      
+    } catch (error: any) {
+      console.error('=== TASK CREATION ERROR ===');
+      console.error('Failed to create task:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      let errorMessage = 'Failed to create task';
+      if (error.message === 'Task creation timeout') {
+        errorMessage = 'Task creation timed out. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
+      console.log('Setting isAddingTask to false');
       setIsAddingTask(false);
+      console.log('=== TASK CREATION DEBUG END ===');
     }
   };
 
@@ -346,22 +381,48 @@ export default function DashboardScreen() {
 
     try {
       setIsAddingTask(true);
-      await createTask({ 
+      
+      // Add timeout protection to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Task creation timeout')), 10000); // 10 second timeout
+      });
+      
+      const createTaskPromise = createTask({ 
         title: modalTaskTitle.trim(),
         description: modalTaskDescription.trim() || undefined,
         priority: modalTaskPriority,
-        status: 'pending',
-        dueDate: modalTaskDate ? modalTaskDate.toISOString() : undefined,
+        due_date: modalTaskDate || undefined,
         tags: [],
+        ai_metadata: {},
       });
       
-      console.log('Modal task created successfully, refreshing tasks...');
-      // Refresh tasks to show the new task
-      await fetchTasks();
+      // Race between task creation and timeout
+      await Promise.race([createTaskPromise, timeoutPromise]);
+      
+      console.log('Modal task created successfully');
+      
+      // Close modal immediately for better UX
       handleCloseAddTaskModal();
-    } catch (error) {
+      
+      // Refresh tasks in background with timeout protection
+      setTimeout(() => {
+        fetchTasks().catch(error => {
+          console.error('Failed to refresh tasks:', error);
+          // Don't show error to user for refresh failure
+        });
+      }, 100); // Small delay to ensure task is created first
+      
+    } catch (error: any) {
       console.error('Failed to create task:', error);
-      Alert.alert('Error', 'Failed to create task');
+      
+      let errorMessage = 'Failed to create task';
+      if (error.message === 'Task creation timeout') {
+        errorMessage = 'Task creation timed out. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsAddingTask(false);
     }

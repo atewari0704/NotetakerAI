@@ -26,33 +26,42 @@ export const taskApi = {
   },
 
   async createTask(taskData: TaskCreateRequest): Promise<Task> {
-    console.log('Creating task:', taskData);
+    console.log('=== TASK API DEBUG START ===');
+    console.log('Task API: Creating task:', taskData);
     
+    console.log('Task API: Checking user authentication...');
     const { data: user, error: userError } = await supabase.auth.getUser();
-    console.log('Auth user check:', { user: !!user.user, error: userError });
+    console.log('Task API: Auth user check:', { user: !!user.user, error: userError });
     
     if (!user.user) {
-      console.error('User not authenticated:', userError);
+      console.error('Task API: User not authenticated:', userError);
       throw new Error('User not authenticated');
     }
 
-    console.log('User ID for task creation:', user.user.id);
+    console.log('Task API: User ID for task creation:', user.user.id);
+    console.log('Task API: About to insert task into database...');
+
+    const insertData = {
+      ...taskData,
+      user_id: user.user.id,
+    };
+    console.log('Task API: Insert data:', insertData);
 
     const { data, error } = await supabase
       .from('tasks')
-      .insert({
-        ...taskData,
-        user_id: user.user.id,
-      })
+      .insert(insertData)
       .select()
       .single();
 
+    console.log('Task API: Database response:', { data, error });
+
     if (error) {
-      console.error('Task creation error:', error);
+      console.error('Task API: Task creation error:', error);
       throw error;
     }
     
-    console.log('Task created successfully:', data);
+    console.log('Task API: Task created successfully:', data);
+    console.log('=== TASK API DEBUG END ===');
     return data;
   },
 

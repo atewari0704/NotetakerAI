@@ -53,6 +53,13 @@ export interface TaskCreateRequest {
   estimated_duration?: number;
   due_date?: Date;
   tags?: string[];
+  ai_metadata?: {
+    priority_score?: number;
+    category_suggestion?: string;
+    estimated_duration?: number;
+    complexity_score?: number;
+    urgency_score?: number;
+  };
 }
 
 export interface TaskUpdateRequest extends Partial<TaskCreateRequest> {

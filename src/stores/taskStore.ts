@@ -15,6 +15,7 @@ interface TaskState {
   deleteTask: (id: string) => Promise<void>;
   setSelectedTask: (task: Task | null) => void;
   clearError: () => void;
+  forceClearLoading: () => void; // Add method to force clear loading state
   
   // Computed
   getPendingTasks: () => Task[];
@@ -32,32 +33,72 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       fetchTasks: async () => {
         set({ isLoading: true, error: null });
         try {
-          const tasks = await taskApi.getTasks();
+          // Add timeout protection to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Fetch tasks timeout')), 5000); // 5 second timeout
+          });
+          
+          const fetchPromise = taskApi.getTasks();
+          
+          // Race between fetch and timeout
+          const tasks = await Promise.race([fetchPromise, timeoutPromise]);
+          
           set({ tasks, isLoading: false });
         } catch (error: any) {
+          console.error('Failed to fetch tasks:', error);
           set({
             isLoading: false,
             error: error.message || 'Failed to fetch tasks',
           });
-          throw error;
+          // Don't throw error for fetch failures - just log them
         }
       },
 
       createTask: async (taskData: TaskCreateRequest) => {
+        console.log('=== TASK STORE DEBUG START ===');
+        console.log('Task store: createTask called with data:', taskData);
         set({ isLoading: true, error: null });
         try {
-          const newTask = await taskApi.createTask(taskData);
-          set((state) => ({
-            tasks: [...state.tasks, newTask],
-            isLoading: false,
-          }));
+          console.log('Task store: Setting loading to true');
+          
+          // Add timeout protection
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Task creation timeout')), 8000); // 8 second timeout
+          });
+          
+          console.log('Task store: About to call taskApi.createTask');
+          const createPromise = taskApi.createTask(taskData);
+          
+          console.log('Task store: Starting race between createTask and timeout');
+          // Race between task creation and timeout
+          const newTask = await Promise.race([createPromise, timeoutPromise]);
+          console.log('Task store: Task creation successful, new task:', newTask);
+          
+          set((state) => {
+            console.log('Task store: Updating state with new task');
+            console.log('Task store: Current tasks count:', state.tasks.length);
+            console.log('Task store: Adding new task to list');
+            return {
+              tasks: [...state.tasks, newTask],
+              isLoading: false,
+            };
+          });
+          console.log('Task store: State updated successfully');
           return newTask;
         } catch (error: any) {
+          console.error('=== TASK STORE ERROR ===');
+          console.error('Task store: createTask failed:', error);
+          console.error('Task store: Error type:', typeof error);
+          console.error('Task store: Error message:', error.message);
+          console.error('Task store: Error stack:', error.stack);
+          
           set({
             isLoading: false,
             error: error.message || 'Failed to create task',
           });
           throw error;
+        } finally {
+          console.log('=== TASK STORE DEBUG END ===');
         }
       },
 
@@ -111,6 +152,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       },
 
       clearError: () => set({ error: null }),
+
+      forceClearLoading: () => {
+        console.log('Force clearing loading state');
+        set({ isLoading: false });
+      },
 
       // Computed getters
       getPendingTasks: () => {
