@@ -6,22 +6,14 @@ import { useAuthListener } from '@/hooks';
 import { AuthDebugger } from '@/components/debug/AuthDebugger';
 
 export default function IndexScreen() {
-  const { isAuthenticated, isLoading, isInitialized, user, initializeAuth, error } = useAuthStore();
+  const { isAuthenticated, isLoading, user, error } = useAuthStore();
   
-  // Set up auth state listener
+  // Set up auth state listener - this handles all auth state management
   useAuthListener();
 
   useEffect(() => {
-    // Only initialize authentication once when the app first loads
-    if (!isInitialized && !isLoading) {
-      console.log('Initializing authentication for the first time...');
-      initializeAuth();
-    }
-  }, [isInitialized, isLoading, initializeAuth]);
-
-  useEffect(() => {
     // Redirect based on authentication status
-    if (isInitialized && !isLoading) {
+    if (!isLoading) {
       console.log('Auth state:', { isAuthenticated, hasUser: !!user });
       if (isAuthenticated && user) {
         console.log('User is authenticated, redirecting to dashboard');
@@ -31,19 +23,19 @@ export default function IndexScreen() {
         router.replace('/(auth)/login');
       }
     }
-  }, [isAuthenticated, isLoading, isInitialized, user]);
+  }, [isAuthenticated, isLoading, user]);
 
   // Reduced timeout to prevent long loading screens
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (isLoading && !isInitialized) {
-        console.warn('Authentication initialization timeout, redirecting to login');
+      if (isLoading) {
+        console.warn('Authentication loading timeout, redirecting to login');
         router.replace('/(auth)/login');
       }
-    }, 2000); // Reduced from 3 to 2 seconds
+    }, 3000); // 3 second timeout
 
     return () => clearTimeout(timeout);
-  }, [isLoading, isInitialized]);
+  }, [isLoading]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -52,15 +44,14 @@ export default function IndexScreen() {
         <Text style={styles.subtitle}>Focus on what matters</Text>
         <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
         <Text style={styles.loadingText}>
-          {!isInitialized ? 'Initializing...' : 'Loading...'}
+          {isLoading ? 'Checking authentication...' : 'Loading...'}
         </Text>
         {error && (
           <Text style={styles.errorText}>Error: {error}</Text>
         )}
         {__DEV__ && (
           <Text style={styles.debugText}>
-            Debug: {isInitialized ? 'Initialized' : 'Not initialized'} | 
-            {isLoading ? 'Loading' : 'Not loading'} | 
+            Debug: {isLoading ? 'Loading' : 'Not loading'} | 
             {isAuthenticated ? 'Authenticated' : 'Not authenticated'}
           </Text>
         )}

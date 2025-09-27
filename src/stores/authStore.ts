@@ -8,7 +8,6 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  isInitialized: boolean;
   
   // Actions
   login: (credentials: LoginRequest) => Promise<void>;
@@ -16,16 +15,15 @@ interface AuthState {
   logout: () => Promise<void>;
   clearError: () => void;
   setUser: (user: User | null) => void;
-  refreshUser: () => Promise<void>;
-  initializeAuth: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: false, // Start as false to prevent initial loading screen
+  isLoading: true, // Start as loading - Supabase will determine auth state
   error: null,
-  isInitialized: false,
 
   login: async (credentials: LoginRequest) => {
     set({ isLoading: true, error: null });
@@ -38,7 +36,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        isInitialized: true, // Mark as initialized after successful login
       });
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -63,7 +60,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        isInitialized: true, // Mark as initialized after successful registration
       });
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -89,7 +85,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        isInitialized: true, // Keep initialized state
       });
     }
   },
@@ -103,106 +98,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     });
   },
 
-  refreshUser: async () => {
-    const { user } = get();
-    if (!user) return;
-
-    try {
-      const updatedUser = await authApi.getCurrentUser();
-      set({ user: updatedUser });
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-    }
+  setLoading: (loading: boolean) => {
+    set({ isLoading: loading });
   },
 
-  initializeAuth: async () => {
-    const { isInitialized, isLoading } = get();
-    
-    // Prevent multiple initializations
-    if (isInitialized || isLoading) {
-      console.log('Auth already initialized or initializing, skipping...', { isInitialized, isLoading });
-      return;
-    }
-    
-    set({ isLoading: true, error: null });
-    
-    try {
-      console.log('Initializing authentication...');
-      
-      // Check if there's an existing session (no artificial delay)
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting session:', error);
-        set({ 
-          isLoading: false, 
-          isInitialized: true,
-          error: error.message 
-        });
-        return;
-      }
-
-      console.log('Session check result:', { hasSession: !!session, hasUser: !!session?.user });
-
-      if (session?.user) {
-        // User is authenticated, get their profile
-        try {
-          console.log('Getting user profile for:', session.user.id);
-          const user = await authApi.getCurrentUser();
-          console.log('User profile loaded:', user?.email);
-          
-          if (user) {
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-              isInitialized: true,
-              error: null,
-            });
-          } else {
-            // User profile not found, sign out
-            console.log('User profile not found, signing out');
-            await supabase.auth.signOut();
-            set({
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-              isInitialized: true,
-              error: null,
-            });
-          }
-        } catch (error) {
-          console.error('Error getting user profile:', error);
-          // Session exists but user profile not found, sign out
-          await supabase.auth.signOut();
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            isInitialized: true,
-            error: 'User profile not found',
-          });
-        }
-      } else {
-        // No session, user is not authenticated
-        console.log('No active session, user not authenticated');
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-          error: null,
-        });
-      }
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        isInitialized: true,
-        error: error instanceof Error ? error.message : 'Failed to initialize authentication',
-      });
-    }
+  setError: (error: string | null) => {
+    set({ error });
   },
 }));

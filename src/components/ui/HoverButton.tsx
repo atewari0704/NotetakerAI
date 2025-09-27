@@ -11,6 +11,8 @@ interface HoverButtonProps extends TouchableOpacityProps {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  customBaseColor?: string;
+  customHoverColor?: string;
 }
 
 export const HoverButton: React.FC<HoverButtonProps> = ({
@@ -20,6 +22,8 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
   fullWidth = false,
   style,
   textStyle,
+  customBaseColor,
+  customHoverColor,
   disabled = false,
   onPress,
   ...props
@@ -27,6 +31,10 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
   const getBaseColor = (): string => {
     if (disabled) {
       return colors.neutral.silver;
+    }
+
+    if (customBaseColor) {
+      return customBaseColor;
     }
 
     switch (variant) {
@@ -44,6 +52,10 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
   const getHoverColor = (): string => {
     if (disabled) {
       return colors.neutral.silver;
+    }
+
+    if (customHoverColor) {
+      return customHoverColor;
     }
 
     switch (variant) {

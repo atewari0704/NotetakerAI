@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Text, TextInput, TouchableOpacity, Modal, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore, useTaskStore, useUIStore } from '@/stores';
+import { useAuthListener } from '@/hooks/useAuthListener';
 import { Card, Logo, HoverButton, HoverTouchable, HoverCheckbox, FloatingActionButton, FocusSessionButton, PriorityButton, TaskIcon, CustomDatePicker } from '@/components/ui';
 import { ChatModal } from '@/components/features/chat';
 import { TaskDetailModal } from '@/components/features/tasks';
@@ -33,7 +34,8 @@ export default function DashboardScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   
-  const { user, logout } = useAuthStore();
+  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
+  const { user, logout, isLoading: authLoading } = useAuthStore();
   const { 
     tasks, 
     isLoading, 
@@ -46,6 +48,30 @@ export default function DashboardScreen() {
     getCompletedTasks 
   } = useTaskStore();
   const { openModal, closeModal, modals } = useUIStore();
+  
+  // Initialize auth listener - this handles all auth state management
+  useAuthListener();
+  
+  // Authentication check - redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log('No user found, redirecting to login');
+      router.replace('/(auth)/login');
+    }
+  }, [authLoading, user]);
+
+  console.log('Auth state check:', { authLoading, user: !!user });
+  
+  // CONDITIONAL RETURN AFTER ALL HOOKS
+  if (authLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Checking authentication...</Text>
+        </View>
+      </View>
+    );
+  }
 
   useEffect(() => {
     fetchTasks();
@@ -139,7 +165,7 @@ export default function DashboardScreen() {
   };
 
   const handleCompleteTaskFromModal = async (taskId: string) => {
-    await completeTask(taskId);
+    await updateTask(taskId, { status: 'completed' });
     await fetchTasks(); // Refresh the task list
   };
 
@@ -176,10 +202,37 @@ export default function DashboardScreen() {
   };
 
   const handleAddInlineTask = async () => {
-    if (!inlineTaskTitle.trim()) return;
+    console.log('handleAddInlineTask function called');
+    console.log('inlineTaskTitle value:', JSON.stringify(inlineTaskTitle));
+    console.log('inlineTaskTitle trimmed:', JSON.stringify(inlineTaskTitle.trim()));
+    console.log('inlineTaskTitle length:', inlineTaskTitle.length);
+    if (!inlineTaskTitle.trim()) {
+      console.log('No title provided, returning early');
+      return;
+    }
     
+    if (!user) {
+      console.log('No user found, showing alert');
+      console.log('User object:', user);
+      console.log('Auth store state:', { user, isAuthenticated: !!user });
+      Alert.alert('Error', 'You must be logged in to create tasks');
+      return;
+    }
+    
+    console.log('User found, proceeding with task creation');
+    console.log('Adding inline task:', {
+      title: inlineTaskTitle.trim(),
+      description: inlineTaskDescription.trim(),
+      priority: inlineTaskPriority || 2,
+      dueDate: inlineTaskDate,
+      user: user?.id
+    });
+    
+    console.log('Setting isAddingTask to true');
     setIsAddingTask(true);
+    console.log('About to call createTask');
     try {
+      console.log('Inside try block, calling createTask');
       await createTask({
         title: inlineTaskTitle.trim(),
         description: inlineTaskDescription.trim() || undefined,
@@ -189,6 +242,11 @@ export default function DashboardScreen() {
         tags: [],
       });
       
+      console.log('createTask completed successfully');
+      console.log('Task created successfully, refreshing tasks...');
+      // Refresh tasks to show the new task
+      await fetchTasks();
+      
       // Reset form
       setInlineTaskTitle('');
       setInlineTaskDescription('');
@@ -196,8 +254,13 @@ export default function DashboardScreen() {
       setInlineTaskDate(null);
       setShowInlineTaskForm(false);
     } catch (error) {
-      console.error('Failed to create task:', error);
-      Alert.alert('Error', 'Failed to create task');
+      console.error('Failed to create inline task:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      Alert.alert('Error', `Failed to create task: ${error.message || 'Unknown error'}`);
     } finally {
       setIsAddingTask(false);
     }
@@ -274,6 +337,13 @@ export default function DashboardScreen() {
       return;
     }
 
+    console.log('Adding modal task:', {
+      title: modalTaskTitle.trim(),
+      description: modalTaskDescription.trim(),
+      priority: modalTaskPriority,
+      dueDate: modalTaskDate
+    });
+
     try {
       setIsAddingTask(true);
       await createTask({ 
@@ -284,6 +354,10 @@ export default function DashboardScreen() {
         dueDate: modalTaskDate ? modalTaskDate.toISOString() : undefined,
         tags: [],
       });
+      
+      console.log('Modal task created successfully, refreshing tasks...');
+      // Refresh tasks to show the new task
+      await fetchTasks();
       handleCloseAddTaskModal();
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -374,14 +448,17 @@ export default function DashboardScreen() {
         {/* Tasks List */}
         <Card style={styles.tasksCard}>
           <View style={styles.tasksHeader}>
-            <Text style={styles.tasksTitle}>Your Tasks ({tasks.length})</Text>
+            <Text style={styles.tasksTitle}>Your Tasks ({pendingTasks.length})</Text>
           </View>
           
           {/* Add Task Button - Always visible and left-aligned */}
           {!showInlineTaskForm && (
             <View style={styles.addTaskButtonContainer}>
               <HoverTouchable 
-                onPress={() => setShowInlineTaskForm(true)}
+                onPress={() => {
+                  console.log('Initial Add task button clicked - showing form');
+                  setShowInlineTaskForm(true);
+                }}
                 style={styles.addTaskButton}
                 hoverStyle={{ opacity: 0.8 }}
               >
@@ -453,7 +530,10 @@ export default function DashboardScreen() {
                 />
                 <HoverButton
                   title={isAddingTask ? 'Adding...' : 'Add task'}
-                  onPress={handleAddInlineTask}
+                  onPress={() => {
+                    console.log('Form Add task button clicked - creating task');
+                    handleAddInlineTask();
+                  }}
                   disabled={isAddingTask || !inlineTaskTitle.trim()}
                   variant="primary"
                   size="small"
@@ -498,7 +578,12 @@ export default function DashboardScreen() {
             <View style={styles.completedTasksHeader}>
               <Text style={styles.completedTasksTitle}>Completed ({completedTasks.length})</Text>
             </View>
-            <View style={styles.completedTasksList}>
+            <ScrollView 
+              style={styles.completedTasksScrollContainer}
+              contentContainerStyle={styles.completedTasksList}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
               {completedTasks.map((task) => (
                 <View key={task.id} style={[styles.taskItem, styles.completedTaskItem]}>
                   <View style={styles.taskCheckbox}>
@@ -521,7 +606,7 @@ export default function DashboardScreen() {
                   </HoverTouchable>
                 </View>
               ))}
-            </View>
+            </ScrollView>
           </Card>
         )}
 
@@ -600,9 +685,12 @@ export default function DashboardScreen() {
               <HoverButton
                 title="Cancel"
                 onPress={cancelDeleteTask}
-                variant="secondary"
+                variant="primary"
                 size="small"
-                style={{ flex: 1, marginRight: 8 }}
+                customBaseColor="rgba(242, 150, 0, 0.72)"
+                customHoverColor="rgba(242, 150, 0, 0.9)"
+                style={styles.modalCancelButton}
+                textStyle={styles.modalCancelButtonText}
               />
               <HoverButton
                 title="Remove"
@@ -1026,6 +1114,12 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: 16,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   emptyState: {
     padding: 32,
     alignItems: 'center',
@@ -1231,14 +1325,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalCancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flex: 1,
+    marginRight: 8,
     borderRadius: 6,
-    backgroundColor: colors.primary.light,
   },
   modalCancelButtonText: {
-    color: colors.text.secondary,
-    fontWeight: '500',
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
   },
   modalConfirmButton: {
     paddingHorizontal: 16,
@@ -1379,6 +1473,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 16,
+  },
+  completedTasksScrollContainer: {
+    maxHeight: 200, // Maximum height before scrolling
   },
   completedTasksList: {
     gap: 0,

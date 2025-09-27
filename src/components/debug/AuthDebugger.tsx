@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores';
 import { supabase } from '@/config/supabase';
 
 export const AuthDebugger: React.FC = () => {
-  const { user, isAuthenticated, isLoading, isInitialized, error, initializeAuth } = useAuthStore();
+  const { user, isAuthenticated, isLoading, error } = useAuthStore();
 
   const testAuth = async () => {
     console.log('=== AUTH DEBUG TEST ===');
@@ -42,11 +42,6 @@ export const AuthDebugger: React.FC = () => {
       <Text style={styles.title}>Auth Debugger</Text>
       
       <View style={styles.status}>
-        <Text style={styles.label}>Initialized:</Text>
-        <Text style={styles.value}>{isInitialized ? 'Yes' : 'No'}</Text>
-      </View>
-      
-      <View style={styles.status}>
         <Text style={styles.label}>Loading:</Text>
         <Text style={styles.value}>{isLoading ? 'Yes' : 'No'}</Text>
       </View>
@@ -73,10 +68,6 @@ export const AuthDebugger: React.FC = () => {
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.button} onPress={testAuth}>
           <Text style={styles.buttonText}>Test Auth</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.button} onPress={initializeAuth}>
-          <Text style={styles.buttonText}>Re-init Auth</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.button, styles.clearButton]} onPress={clearAuth}>
